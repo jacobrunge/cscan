@@ -21,7 +21,7 @@ struct Finding {
 fn classify(name: &str) -> Option<(Severity, u32)> {
     match name {
         "gets" => Some((Severity::Critical, 242)),
-        "strcpy" | "strcat" => Some((Severity::High, 120)),
+        "strcpy" | "strcat" | "vsprintf" => Some((Severity::High, 120)),
         "sprintf" => Some((Severity::High, 120)),
         _ => None,
     }
