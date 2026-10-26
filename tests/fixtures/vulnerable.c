@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <char.h>
+
 
 void vulnerable_function(char* out, const char* in) {
     strcpy(out, "Hello, ");
@@ -16,6 +16,7 @@ int main(void) {
 
     printf("Enter your name: ");
     gets(name);
+    strcpy(record, gets(name));
 
     vulnerable_function(greet, name);
     sprintf(record, "%s (age %d)", greet, age);
