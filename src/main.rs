@@ -1,17 +1,35 @@
 use anyhow::{Context, Result, bail};
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser};
 use walkdir::WalkDir;
+use clap::{Parser as ClapParser, ValueEnum};
+use serde::Serialize;
 
-#[derive(Debug, PartialEq)]
+#[derive(ClapParser)]
+#[command(version)]
+struct Cli {
+    /// Directory to scan
+    path: String,
+
+    /// Output
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    format: Format,
+}
+
+#[derive(Clone, ValueEnum)]
+enum Format {
+    Text,
+    Json
+}
+
+#[derive(Debug, PartialEq, Serialize)]
 enum Severity {
     High,
     Critical,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Finding {
     path: String,
     line: usize,
@@ -84,13 +102,11 @@ fn collect_files(root: &str) -> Vec<PathBuf> {
 }
 
 fn main() -> Result<()> {
-    let root = env::args()
-        .nth(1)
-        .context("Usage: cscan <file-or-directory>")?;
+    let cli = Cli::parse();
 
-    let files = collect_files(&root);
+    let files = collect_files(&cli.path);
     if files.is_empty() {
-        bail!("No .c or .h files found in {}", root);
+        bail!("No .c or .h files found in {}", cli.path);
     }
 
     let mut findings = Vec::new();
@@ -101,17 +117,24 @@ fn main() -> Result<()> {
         findings.extend(analyze(&source, &path)?);
     }
 
-    for f in &findings {
-        println!(
-            "{}:{}: [{:?}] CWE-{}: call to {}",
-            f.path, f.line, f.severity, f.cwe, f.function
-        );
+    match cli.format {
+        Format::Text => {
+            for f in &findings {
+                println!(
+                    "{}:{}: [{:?}] CWE-{}: call to {}",
+                    f.path, f.line, f.severity, f.cwe, f.function
+                );
+            }
+            println!("{} finding(s) in {} file(s)", findings.len(), files.len());
+        }
+        Format::Json => {
+            println!("{}", serde_json::to_string_pretty(&findings)?);
+        }
     }
-    println!("{} finding(s) in {} file(s)", findings.len(), files.len());
     Ok(())
 }
 
-// Unit testing below
+/// Unit testing below
 
 #[cfg(test)]
 mod tests {
