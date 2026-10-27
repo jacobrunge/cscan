@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn ignores_comments_and_strings() {
         let source = r#"/* Never use strcpy */
-        void f(const char *msg) { *msg = "gets in unsafe"; }"#;
+        void f(void) { *msg = "gets is unsafe"; }"#;
         
         let findings = analyze(source, "test.c").unwrap();
         assert!(findings.is_empty());
@@ -120,14 +120,21 @@ mod tests {
          strcpy(a, gets(b)); 
          }"#;
 
-        let findings = analyze(source, "test,c").unwrap();
+        let findings = analyze(source, "test.c").unwrap();
         assert_eq!(findings.len(), 2);
         assert_eq!(findings[0].function, "strcpy");
         assert_eq!(findings[1].function, "gets");
-
-
-
-
-
     }
-}
+
+    #[test]
+    fn gets_is_critical() {
+        let source = "void f(char *buf) { gets(buf); }";
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].function, "gets");
+        assert_eq!(findings[0].severity, Severity::Critical);
+        assert_eq!(findings[0].cwe, 242);
+    }
+    }
+
