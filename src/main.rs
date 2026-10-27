@@ -1,15 +1,16 @@
 use anyhow::{Context, Result, bail};
+use clap::{Parser as ClapParser, ValueEnum};
+use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser};
 use walkdir::WalkDir;
-use clap::{Parser as ClapParser, ValueEnum};
-use serde::Serialize;
 
+/// Static analyzer that finds memory-safety bugs in C source code
 #[derive(ClapParser)]
 #[command(version)]
 struct Cli {
-    /// Directory to scan
+    /// File or Directory to scan
     path: String,
 
     /// Output
@@ -20,7 +21,7 @@ struct Cli {
 #[derive(Clone, ValueEnum)]
 enum Format {
     Text,
-    Json
+    Json,
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -131,10 +132,13 @@ fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&findings)?);
         }
     }
+    if !findings.is_empty() {
+        std::process::exit(1)
+    }
     Ok(())
 }
 
-/// Unit testing below
+// Unit testing below
 
 #[cfg(test)]
 mod tests {
