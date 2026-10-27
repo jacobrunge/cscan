@@ -1,7 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use std::env;
 use std::fs;
+use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser};
+use walkdir::WalkDir;
 
 #[derive(Debug, PartialEq)]
 enum Severity {
@@ -61,12 +63,43 @@ fn analyze(source: &str, path: &str) -> Result<Vec<Finding>> {
     Ok(findings)
 }
 
-fn main() -> Result<()> {
-    let path = env::args().nth(1).context("Usage: cscan <file.c>")?;
-    let source =
-        fs::read_to_string(&path).with_context(|| format!("Failed to read file {}", path))?;
+fn is_c_file(path: &Path) -> bool {
+    match path.extension() {
+        Some(ext) => ext == "c" || ext == "h",
+        None => false,
+    }
+}
 
-    let findings = analyze(&source, &path)?;
+fn collect_files(root: &str) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    for entry in WalkDir::new(root) {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        if entry.file_type().is_file() && is_c_file(entry.path()) {
+            files.push(entry.path().to_path_buf());
+        }
+    }
+    files
+}
+
+fn main() -> Result<()> {
+    let root = env::args()
+        .nth(1)
+        .context("Usage: cscan <file-or-directory>")?;
+
+    let files = collect_files(&root);
+    if files.is_empty() {
+        bail!("No .c or .h files found in {}", root);
+    }
+
+    let mut findings = Vec::new();
+    for file in &files {
+        let path = file.display().to_string();
+        let source =
+            fs::read_to_string(file).with_context(|| format!("Failed to read file {}", path))?;
+        findings.extend(analyze(&source, &path)?);
+    }
 
     for f in &findings {
         println!(
@@ -74,7 +107,7 @@ fn main() -> Result<()> {
             f.path, f.line, f.severity, f.cwe, f.function
         );
     }
-    println!("{} finding(s)", findings.len());
+    println!("{} finding(s) in {} file(s)", findings.len(), files.len());
     Ok(())
 }
 
@@ -108,13 +141,14 @@ mod tests {
     #[test]
     fn ignores_comments_and_strings() {
         let source = r#"/* Never use strcpy */
-        void f(void) { *msg = "gets is unsafe"; }"#;
-        
+        void f(void) { 
+        const char *msg = "gets is unsafe"; }"#;
+
         let findings = analyze(source, "test.c").unwrap();
         assert!(findings.is_empty());
     }
 
-    #[test] 
+    #[test]
     fn finds_nested_calls() {
         let source = r#"void f(char *a, char *b) {
          strcpy(a, gets(b)); 
@@ -136,5 +170,4 @@ mod tests {
         assert_eq!(findings[0].severity, Severity::Critical);
         assert_eq!(findings[0].cwe, 242);
     }
-    }
-
+}
