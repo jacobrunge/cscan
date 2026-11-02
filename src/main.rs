@@ -93,6 +93,7 @@ fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
                 cwe: 134,
             });
         }
+    }
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
@@ -228,5 +229,23 @@ mod tests {
         assert_eq!(findings[0].function, "gets");
         assert_eq!(findings[0].severity, Severity::Critical);
         assert_eq!(findings[0].cwe, 242);
+    }
+     #[test]
+    fn flags_non_literal_format_string() {
+        let source = "void f(char *input) { printf(input); }";
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].function, "printf");
+        assert_eq!(findings[0].severity, Severity::High);
+        assert_eq!(findings[0].cwe, 134);
+    }
+
+    #[test]
+    fn allows_literal_format_string() {
+        let source = r#"void f(char *input) { printf("%s", input); }"#;
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert!(findings.is_empty());
     }
 }
