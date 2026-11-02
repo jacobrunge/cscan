@@ -34,9 +34,10 @@ enum Severity {
 struct Finding {
     path: String,
     line: usize,
-    function: String,
-    severity: Severity,
     cwe: u32,
+    function: String,
+    message: String, 
+    severity: Severity,
 }
 
 fn classify(name: &str) -> Option<(Severity, u32)> {
@@ -45,6 +46,27 @@ fn classify(name: &str) -> Option<(Severity, u32)> {
         "strcpy" | "strcat" | "vsprintf" | "sprintf" => Some((Severity::High, 120)),
         _ => None,
     }
+}
+
+fn format_arg_index(name: &str) -> Option<u32> {
+    match name {
+        "printf" => Some(0), 
+        "fprintf" | "sprintf" | "syslog" => Some(1),
+        "snprintf" => Some(2), _=> None, 
+    }
+}
+
+fn has_non_literal_format(call: Node, name: &str) -> bool {
+    let Some(index) = format_arg_index(name) else {
+        return false;
+    };
+    let Some(arguments) = call.child_by_field_name("arguments") else {
+        return false;
+    }; 
+    let Some(format) = arguments.named_child(index) else {
+        return false;
+    };
+    !matches!(format.kind(), "string_literal" | "concatenated_string")
 }
 
 fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
@@ -56,11 +78,21 @@ fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
                 path: path.to_string(),
                 line: node.start_position().row + 1,
                 function: name.to_string(),
+                message: format!("call to {}", name),
                 severity,
                 cwe,
             });
         }
-    }
+        if has_non_literal_format(node, name) {
+            findings.push(Finding {
+                path: path.to_string(),
+                line: node.start_position().row + 1,
+                function: name.to_string(),
+                message: format!("non-literal format string in call to {}", name),
+                severity: Severity::High,
+                cwe: 134,
+            });
+        }
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
@@ -121,9 +153,9 @@ fn main() -> Result<()> {
     match cli.format {
         Format::Text => {
             for f in &findings {
-                println!(
-                    "{}:{}: [{:?}] CWE-{}: call to {}",
-                    f.path, f.line, f.severity, f.cwe, f.function
+                 println!(
+                    "{}:{}: [{:?}] CWE-{}: {}",
+                    f.path, f.line, f.severity, f.cwe, f.message
                 );
             }
             println!("{} finding(s) in {} file(s)", findings.len(), files.len());
