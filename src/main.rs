@@ -36,7 +36,7 @@ struct Finding {
     line: usize,
     cwe: u32,
     function: String,
-    message: String, 
+    message: String,
     severity: Severity,
 }
 
@@ -50,9 +50,10 @@ fn classify(name: &str) -> Option<(Severity, u32)> {
 
 fn format_arg_index(name: &str) -> Option<u32> {
     match name {
-        "printf" => Some(0), 
+        "printf" => Some(0),
         "fprintf" | "sprintf" | "syslog" => Some(1),
-        "snprintf" => Some(2), _=> None, 
+        "snprintf" => Some(2),
+        _ => None,
     }
 }
 
@@ -62,7 +63,7 @@ fn has_non_literal_format(call: Node, name: &str) -> bool {
     };
     let Some(arguments) = call.child_by_field_name("arguments") else {
         return false;
-    }; 
+    };
     let Some(format) = arguments.named_child(index) else {
         return false;
     };
@@ -154,7 +155,7 @@ fn main() -> Result<()> {
     match cli.format {
         Format::Text => {
             for f in &findings {
-                 println!(
+                println!(
                     "{}:{}: [{:?}] CWE-{}: {}",
                     f.path, f.line, f.severity, f.cwe, f.message
                 );
@@ -230,7 +231,7 @@ mod tests {
         assert_eq!(findings[0].severity, Severity::Critical);
         assert_eq!(findings[0].cwe, 242);
     }
-     #[test]
+    #[test]
     fn flags_non_literal_format_string() {
         let source = "void f(char *input) { printf(input); }";
         let findings = analyze(source, "test.c").unwrap();
@@ -247,5 +248,17 @@ mod tests {
         let findings = analyze(source, "test.c").unwrap();
 
         assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn sprintf_with_variable_format() {
+        let source = "void f (char *buf, char *input) {
+        sprintf(buf,input); }";
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert_eq!(findings.len(), 2);
+        assert_eq!(findings[0].function, "sprintf");
+        assert_eq!(findings[0].severity, Severity::High);
+        assert_eq!(findings[0].cwe, 134);
     }
 }

@@ -23,6 +23,7 @@ int main(void) {
 
     printf("Enter your name: ");
     gets(name);
+    printf(name);
     strcpy(record, gets(name));
 
     vulnerable_function(greet, name);
