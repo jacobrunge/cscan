@@ -64,7 +64,12 @@ fn has_non_literal_format(call: Node, name: &str) -> bool {
     let Some(arguments) = call.child_by_field_name("arguments") else {
         return false;
     };
-    let Some(format) = arguments.named_child(index) else {
+    let mut cursor = arguments.walk();
+    let Some(format) = arguments
+        .named_children(&mut cursor)
+        .filter(|n| n.kind() != "comment")
+        .nth(index as usize)
+    else {
         return false;
     };
     !matches!(format.kind(), "string_literal" | "concatenated_string")
@@ -280,6 +285,15 @@ mod tests {
         fprintf(stderr, "hello"); }"#;
         let findings = analyze(source, "test.c").unwrap();
         
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn allows_comment_before_format() {
+        let source = r#"void f(char *input) {
+        printf(/* greeting */ "hi");"#;
+        let findings = analyze(source, "test.c").unwrap();
+
         assert!(findings.is_empty());
     }
 
