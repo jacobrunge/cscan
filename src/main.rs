@@ -259,6 +259,29 @@ mod tests {
         assert_eq!(findings.len(), 2);
         assert_eq!(findings[0].function, "sprintf");
         assert_eq!(findings[0].severity, Severity::High);
+        assert_eq!(findings[0].cwe, 120);
+        assert_eq!(findings[1].cwe, 134);
+    }
+
+    #[test] 
+    fn check_fprintf_expected_arg() {
+        let source = "void f(char *input) {
+        fprintf(stderr, input); }";
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].function, "fprintf");
         assert_eq!(findings[0].cwe, 134);
     }
+
+    #[test]
+    fn allows_fprintf_literal_format() {
+        let source = r#"void f(char *input) {
+        fprintf(stderr, "hello"); }"#;
+        let findings = analyze(source, "test.c").unwrap();
+        
+        assert!(findings.is_empty());
+    }
+
+    
 }
