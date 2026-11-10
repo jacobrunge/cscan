@@ -338,4 +338,21 @@ mod tests {
 
         assert!(findings.is_empty());
     }
+
+    #[test]
+    fn sarif_output_has_rule_and_location() {
+        let source = "void f(char *buf) { gets(buf); }";
+        let findings = analyze(source, "src\\test.c").unwrap();
+        let sarif = to_sarif(&findings);
+
+        assert_eq!(sarif["version"], "2.1.0");
+
+        let result = &sarif["runs"][0]["results"][0];
+        assert_eq!(result["ruleId"], "CWE-242");
+        assert_eq!(result["level"], "error");
+
+        let location = &result["locations"][0]["physicalLocation"];
+        assert_eq!(location["region"]["startLine"], 1);
+        assert_eq!(location["artifactLocation"]["uri"], "src/test.c");
+    }
 }
