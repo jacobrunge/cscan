@@ -1,6 +1,7 @@
 use anyhow::{Context, Result, bail};
 use clap::{Parser as ClapParser, ValueEnum};
 use serde::Serialize;
+use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser};
@@ -22,6 +23,7 @@ struct Cli {
 enum Format {
     Text,
     Json,
+    Sarif,
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -141,6 +143,43 @@ fn collect_files(root: &str) -> Vec<PathBuf> {
     files
 }
 
+fn to_sarif(findings: &[Finding]) -> serde_json::Value {
+    let results: Vec<serde_json::Value> = findings
+        .iter()
+        .map(|f| {
+            let level = match f.severity {
+                Severity::Critical => "error",
+                Severity::High => "warning",
+            };
+            json!({
+                "ruleId": format!("CWE-{}", f.cwe),
+                "level": level,
+                "message": { "text": f.message },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": { "uri": f.path.replace('\\', "/") },
+                        "region": { "startLine": f.line }
+                    }
+                }]
+            })
+        })
+        .collect();
+
+    json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "cscan",
+                    "version": env!("CARGO_PKG_VERSION")
+                }
+            },
+            "results": results
+        }]
+    })
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -169,6 +208,9 @@ fn main() -> Result<()> {
         }
         Format::Json => {
             println!("{}", serde_json::to_string_pretty(&findings)?);
+        }
+        Format::Sarif => {
+            println!("{}", serde_json::to_string_pretty(&to_sarif(&findings))?);
         }
     }
     if !findings.is_empty() {
@@ -268,7 +310,7 @@ mod tests {
         assert_eq!(findings[1].cwe, 134);
     }
 
-    #[test] 
+    #[test]
     fn check_fprintf_expected_arg() {
         let source = "void f(char *input) {
         fprintf(stderr, input); }";
@@ -284,7 +326,7 @@ mod tests {
         let source = r#"void f(char *input) {
         fprintf(stderr, "hello"); }"#;
         let findings = analyze(source, "test.c").unwrap();
-        
+
         assert!(findings.is_empty());
     }
 
@@ -296,6 +338,4 @@ mod tests {
 
         assert!(findings.is_empty());
     }
-
-    
 }
