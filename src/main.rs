@@ -6,6 +6,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser};
 use walkdir::WalkDir;
+mod rules;
+use rules::{Severity, classify, has_non_literal_format};
 
 /// Static analyzer that finds memory-safety bugs in C source code
 #[derive(ClapParser)]
@@ -26,12 +28,6 @@ enum Format {
     Sarif,
 }
 
-#[derive(Debug, PartialEq, Serialize)]
-enum Severity {
-    High,
-    Critical,
-}
-
 #[derive(Debug, Serialize)]
 struct Finding {
     path: String,
@@ -40,41 +36,6 @@ struct Finding {
     function: String,
     message: String,
     severity: Severity,
-}
-
-fn classify(name: &str) -> Option<(Severity, u32)> {
-    match name {
-        "gets" => Some((Severity::Critical, 242)),
-        "strcpy" | "strcat" | "vsprintf" | "sprintf" => Some((Severity::High, 120)),
-        _ => None,
-    }
-}
-
-fn format_arg_index(name: &str) -> Option<u32> {
-    match name {
-        "printf" => Some(0),
-        "fprintf" | "sprintf" | "syslog" => Some(1),
-        "snprintf" => Some(2),
-        _ => None,
-    }
-}
-
-fn has_non_literal_format(call: Node, name: &str) -> bool {
-    let Some(index) = format_arg_index(name) else {
-        return false;
-    };
-    let Some(arguments) = call.child_by_field_name("arguments") else {
-        return false;
-    };
-    let mut cursor = arguments.walk();
-    let Some(format) = arguments
-        .named_children(&mut cursor)
-        .filter(|n| n.kind() != "comment")
-        .nth(index as usize)
-    else {
-        return false;
-    };
-    !matches!(format.kind(), "string_literal" | "concatenated_string")
 }
 
 fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
