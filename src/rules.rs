@@ -41,3 +41,4 @@ pub fn has_non_literal_format(call: Node, name: &str) -> bool {
     };
     !matches!(format.kind(), "string_literal" | "concatenated_string")
 }
+
