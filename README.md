@@ -1,4 +1,5 @@
 # cscan
+![cscan](https://github.com/jacobrunge/cscan/actions/workflows/cscan.yml/badge.svg)
 
 A static analyzer written in Rust that scans C source code for memory-safety and format-string vulnerabilities. cscan parses each file into a syntax tree with [tree-sitter](https://tree-sitter.github.io/), reports dangerous function calls with their CWE ID and severity, and exits with a non-zero code so it can gate a CI pipeline.
 
@@ -57,7 +58,7 @@ The binary is written to `target/release/cscan`.
 ## Usage
 
 ```
-cscan <PATH> [--format <text|json>]
+cscan <PATH> [--format <text|json|sarif>]
 ```
 
 `PATH` can be a single file or a directory, which is scanned recursively.
@@ -65,6 +66,7 @@ cscan <PATH> [--format <text|json>]
 ```
 cargo run -- tests/fixtures
 cargo run -- tests/fixtures --format json
+cargo run -- tests/fixtures --format sarif
 ```
 
 JSON output is an array of findings:
@@ -89,6 +91,11 @@ JSON output is an array of findings:
 | `0` | Scan completed, no findings |
 | `1` | Findings were reported, or an error occurred |
 
+## CI integration
+
+The workflow in `.github/workflows/cscan.yml` runs on every push and pull request. It runs the test suite, builds cscan, scans the repository, and uploads the results as SARIF, so findings appear in the repo's **Security → Code scanning** tab and as annotations on pull requests.
+
+
 ## Testing
 
 ```
@@ -108,7 +115,7 @@ cscan is a syntactic analyzer, and it has the trade-offs that come with that:
 
 ## Roadmap
 
-- [ ] SARIF output for GitHub code scanning
+- [x] SARIF output for GitHub code scanning
 - [ ] Configuration file to enable or disable individual rules
 - [ ] Inline suppression comments for accepted findings
 - [ ] Separate exit code for errors versus findings
