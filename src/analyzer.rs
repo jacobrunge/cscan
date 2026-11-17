@@ -14,7 +14,7 @@ pub struct Finding {
     pub severity: Severity,
 }
 
-pub fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
+fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
     if node.kind() == "call_expression" {
         let function = node.child_by_field_name("function").unwrap();
         let name = function.utf8_text(source.as_bytes()).unwrap();
