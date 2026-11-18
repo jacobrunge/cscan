@@ -50,7 +50,7 @@ fn collect_files(root: &str) -> Vec<PathBuf> {
     files
 }
 
-fn main() -> Result<()> {
+fn run() -> Result<bool> {
     let cli = Cli::parse();
 
     let files = collect_files(&cli.path);
@@ -83,8 +83,16 @@ fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&to_sarif(&findings))?);
         }
     }
-    if !findings.is_empty() {
-        std::process::exit(1)
+        Ok(!findings.is_empty())
+}
+
+fn main() {
+    match run() {
+        Ok(true) => std::process::exit(1),
+        Ok(false) => std::process::exit(0),
+        Err(e) => {
+            eprintln!("error: {:#}", e);
+            std::process::exit(2);
+        }
     }
-    Ok(())
 }

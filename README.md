@@ -91,6 +91,7 @@ JSON output is an array of findings:
 |------|---------|
 | `0` | Scan completed, no findings |
 | `1` | Findings were reported, or an error occurred |
+| `2` | Scanner error, No .h or .c files found in file
 
 ## CI integration
 
@@ -119,6 +120,6 @@ cscan is a syntactic analyzer, and it has the trade-offs that come with that:
 - [x] SARIF output for GitHub code scanning
 - [ ] Configuration file to enable or disable individual rules
 - [ ] Inline suppression comments for accepted findings
-- [ ] Separate exit code for errors versus findings
+- [x] Separate exit code for errors versus findings
 - [ ] More rules: `memcpy` size checks, `scanf("%s")`, unchecked `malloc`
 - [ ] Measure precision and recall against the NIST Juliet C/C++ test suite

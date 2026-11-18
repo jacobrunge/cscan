@@ -27,8 +27,8 @@ fn format_arg_index(name: &str) -> Option<u32> {
 fn scanf_format_index(name: &str) -> Option<u32> {
     match name {
         "scanf" => Some(0),
-        "fscanf" | "sscanf" => Some(1), 
-        _=> None, 
+        "fscanf" | "sscanf" => Some(1),
+        _ => None,
     }
 }
 
@@ -81,7 +81,10 @@ fn has_unbounded_string_conversion(format: &str) -> bool {
 fn nth_argument(call: Node, index: u32) -> Option<Node> {
     let arguments = call.child_by_field_name("arguments")?;
     let mut cursor = arguments.walk();
-    arguments.named_children(&mut cursor).filter(|n| n.kind() != "comment").nth(index as usize)
+    arguments
+        .named_children(&mut cursor)
+        .filter(|n| n.kind() != "comment")
+        .nth(index as usize)
 }
 
 #[cfg(test)]
