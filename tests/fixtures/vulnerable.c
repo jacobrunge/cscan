@@ -23,6 +23,7 @@ int main(void) {
 
     printf("Enter your name: ");
     gets(name);
+    scanf("%s", name);
     printf(name);
     strcpy(record, gets(name));
 

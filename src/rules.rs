@@ -24,6 +24,14 @@ fn format_arg_index(name: &str) -> Option<u32> {
     }
 }
 
+fn scanf_format_index(name: &str) -> Option<u32> {
+    match name {
+        "scanf" => Some(0),
+        "fscanf" | "sscanf" => Some(1), 
+        _=> None, 
+    }
+}
+
 pub fn has_non_literal_format(call: Node, name: &str) -> bool {
     let Some(index) = format_arg_index(name) else {
         return false;
@@ -32,6 +40,20 @@ pub fn has_non_literal_format(call: Node, name: &str) -> bool {
         return false;
     };
     !matches!(format.kind(), "string_literal" | "concatenated_string")
+}
+
+pub fn has_unbounded_scanf(call: Node, name: &str, source: &str) -> bool {
+    let Some(index) = scanf_format_index(name) else {
+        return false;
+    };
+    let Some(format) = nth_argument(call, index) else {
+        return false;
+    };
+    if format.kind() != "string_literal" {
+        return false;
+    }
+    let text = format.utf8_text(source.as_bytes()).unwrap_or("");
+    has_unbounded_string_conversion(text)
 }
 
 fn has_unbounded_string_conversion(format: &str) -> bool {

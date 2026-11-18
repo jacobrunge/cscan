@@ -12,11 +12,12 @@ tests/fixtures/vulnerable.c:7: [High] CWE-120: call to strcpy
 tests/fixtures/vulnerable.c:8: [High] CWE-120: call to strcat
 tests/fixtures/vulnerable.c:14: [High] CWE-120: call to vsprintf
 tests/fixtures/vulnerable.c:25: [Critical] CWE-242: call to gets
-tests/fixtures/vulnerable.c:26: [High] CWE-134: non-literal format string in call to printf
-tests/fixtures/vulnerable.c:27: [High] CWE-120: call to strcpy
-tests/fixtures/vulnerable.c:27: [Critical] CWE-242: call to gets
-tests/fixtures/vulnerable.c:30: [High] CWE-120: call to sprintf
-9 finding(s) in 3 file(s)
+tests/fixtures/vulnerable.c:26: [High] CWE-120: unbounded %s in call to scanf
+tests/fixtures/vulnerable.c:27: [High] CWE-134: non-literal format string in call to printf
+tests/fixtures/vulnerable.c:28: [High] CWE-120: call to strcpy
+tests/fixtures/vulnerable.c:28: [Critical] CWE-242: call to gets
+tests/fixtures/vulnerable.c:31: [High] CWE-120: call to sprintf
+10 finding(s) in 3 file(s)
 ```
 
 ## What it detects
@@ -24,7 +25,7 @@ tests/fixtures/vulnerable.c:30: [High] CWE-120: call to sprintf
 | CWE | Vulnerability | Functions | Severity |
 |-----|---------------|-----------|----------|
 | [CWE-242](https://cwe.mitre.org/data/definitions/242.html) | Use of inherently dangerous function | `gets` | Critical |
-| [CWE-120](https://cwe.mitre.org/data/definitions/120.html) | Buffer copy without checking size of input | `strcpy`, `strcat`, `sprintf`, `vsprintf` | High |
+| [CWE-120](https://cwe.mitre.org/data/definitions/120.html) | Buffer copy without checking size of input | `strcpy`, `strcat`, `sprintf`, `vsprintf`, `scanf`, `fscanf`, `sscanf` | High |
 | [CWE-134](https://cwe.mitre.org/data/definitions/134.html) | Use of externally controlled format string | `printf`, `fprintf`, `sprintf`, `snprintf`, `syslog` | High |
 
 A single call can produce more than one finding. `sprintf(buf, input)` is reported as both a buffer overflow (CWE-120) and a format string vulnerability (CWE-134).

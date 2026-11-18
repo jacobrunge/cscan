@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use tree_sitter::{Node, Parser};
 
-use crate::rules::{Severity, classify, has_non_literal_format};
+use crate::rules::{Severity, classify, has_non_literal_format, has_unbounded_scanf};
 
 #[derive(Debug, Serialize)]
 pub struct Finding {
@@ -38,6 +38,16 @@ fn walk(node: Node, source: &str, path: &str, findings: &mut Vec<Finding>) {
                 cwe: 134,
             });
         }
+        if has_unbounded_scanf(node, name, source) {
+            findings.push(Finding {
+                path: path.to_string(),
+                line: node.start_position().row + 1,
+                function: name.to_string(),
+                message: format!("unbounded %s in call to {}", name),
+                severity: Severity::High,
+                cwe: 120,
+            });
+        }
     }
 
     let mut cursor = node.walk();
@@ -64,7 +74,7 @@ pub fn analyze(source: &str, path: &str) -> Result<Vec<Finding>> {
 mod tests {
     use super::*;
 
-     #[test]
+    #[test]
     fn finds_strcpy() {
         let source = "void f(char *a, char *b) {strcpy(a, b); }";
         let findings = analyze(source, "test.c").unwrap();
@@ -177,6 +187,32 @@ mod tests {
 
         assert!(findings.is_empty());
     }
+
+    #[test]
+    fn flags_unbounded_scanf() {
+        let source = r#"void f(char *buf) { scanf("%s", buf); }"#;
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].cwe, 120);
+        assert_eq!(findings[0].function, "scanf");
+    }
+
+    #[test]
+    fn allows_bounded_scanf() {
+        let source = r#"void f(char *buf) {scanf("%63s", buf);}"#;
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn flags_unbounded_sscanf() {
+        let source = r#"void f(char *in, char *buf) { sscanf(in, "%d %s", buf); }"#;
+        let findings = analyze(source, "test.c").unwrap();
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].function, "sscanf");
+        assert_eq!(findings[0].cwe, 120);
+    }
 }
-
-
