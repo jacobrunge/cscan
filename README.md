@@ -90,7 +90,7 @@ JSON output is an array of findings:
 | Code | Meaning |
 |------|---------|
 | `0` | Scan completed, no findings |
-| `1` | Findings were reported, or an error occurred |
+| `1` | Findings were reported |
 | `2` | Scanner error, No .h or .c files found in file
 
 ## CI integration
